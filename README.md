@@ -20,15 +20,6 @@ Psoriasis is a debilitating autoimmune disease characterized by inflammation and
 - Multiple psoriatic arthritis-associated genes (CXCL9, CXCL10, CSF1, DCST2) significantly elevated, suggesting potential as an early screening panel for PsA development in psoriasis patients.
 - Cardiovascular-related pathways (calcium signaling hsa04020, ES = -0.41; cardiac muscle contraction hsa04260, ES = -0.55) also enriched, hinting at shared transcriptional mechanisms with cardiometabolic comorbidities.
 
-
-### Quick Start (fully reproducible)
-```bash
-git clone https://github.com/yourusername/RNAseq-portfolio-project-Psoriasis.git
-cd RNAseq-portfolio-project-Psoriasis
-conda env create -f environment.yml
-conda activate psoriasis-rnaseq
-R -e "rmarkdown::render('Psoriasis_RNAseq_Analysis.Rmd')"
-```
 *** Important to note that version of tools such as org.Hs.eg.db could lead to slightly different results ***
 
 ### Tools
