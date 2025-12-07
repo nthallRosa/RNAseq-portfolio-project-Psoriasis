@@ -5,22 +5,23 @@ This project was developed as a skills demonstration to highlight my ability to 
 ### Biological context and project goals
 Psoriasis is a debilitating autoimmune disease characterized by inflammation and hyperproliferation of skin cells. Many psoriasis patients also experience several comorbidities. These would include illnesses such as cardiovascular disease, psoriatic arthritis, inflammatory bowel disease, and many more. While much progress has been made when it comes to diagnosing and treating the skin disease, mechanisms connecting psoriasis to these comorbidities are incompletely understood, and some such as psoriatic arthritis contain no diagnostic test. The goal of this project is to identify gene expression patterns that best characterize psoriasis and serve as predictors for development of future comorbidities.
 ### Tools
-- Rstudio ()
-- R()
-- DESeq2
-- EnhancedVolcano()
-- dplyr()
-- clusterProfiler()
-- org.Hs.eg.db()
-- enrichplot()
-- pathview()
-- VennDiagram()
-- stringr()
+- Rstudio (2025.5.1.513.3)
+- R(4.5.2)
+- DESeq2(1.50.2)
+- EnhancedVolcano(1.29.1)
+- dplyr(1.1.4)
+- clusterProfiler(4.18.2)
+- org.Hs.eg.db(3.22.0)
+- enrichplot(1.30.3)
+- pathview(1.50.0)
+- VennDiagram(1.7.3)
+- stringr(1.6.0)
 
-<img width="515" height="406" alt="Screen Shot 2025-12-07 at 1 56 36 PM" src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" /><img width="520" height="517" alt="Screen Shot 2025-12-07 at 2 00 20 PM" src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" />
-
-
-
+  <p float="left">
+  <img width="515" height="406" alt="Screen Shot 2025-12-07 at 1 56 36 PM" src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" />
+  <img width="520" height="517" alt="Screen Shot 2025-12-07 at 2 00 20 PM" src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" />
+  <img width="358" height="249" alt="Screen Shot 2025-12-07 at 2 04 18 PM" src="https://github.com/user-attachments/assets/8f830f71-0298-4dcc-8121-0e6cff1e19a1" />  
+</p>
 
 
 ### Key Findings
@@ -28,3 +29,4 @@ Psoriasis is a debilitating autoimmune disease characterized by inflammation and
 - Rheumatoid arthritis KEGG pathway (hsa05323) unexpectedly enriched in lesional psoriasis skin (ES = 0.73), with five pathway genes directly feeding into the IL-17 signaling axis central to psoriasis pathogenesis.
 - Multiple psoriatic arthritis-associated genes (CXCL9, CXCL10, CSF1, DCST2) significantly elevated, suggesting potential as an early screening panel for PsA development in psoriasis patients.
 - Cardiovascular-related pathways (calcium signaling hsa04020, ES = -0.41; cardiac muscle contraction hsa04260, ES = -0.55) also enriched, hinting at shared transcriptional mechanisms with cardiometabolic comorbidities.
+- 
