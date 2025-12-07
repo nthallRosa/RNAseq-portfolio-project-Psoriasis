@@ -5,9 +5,13 @@
     </summary>
   </ul>
 </div>
-
-
-<h2 align="center">Bulk RNA-seq re-analysis of lesional psoriasis skin reveals shared molecular links with psoriatic arthritis and cardiovascular comorbidities<h2>
+<div id="toc">
+  <ul style="list-style: none">
+    <summary>
+      <h2 align="center"> Bulk RNA-seq re-analysis of lesional psoriasis skin reveals shared molecular links with psoriatic arthritis and cardiovascular comorbidities </h2>
+    </summary>
+  </ul>
+</div>
 
 ### Project overview
 This project was developed as a skills demonstration to highlight my ability to use R for bulk RNA-seq analysis, apply common bioinformatics workflows, and think critically about biological results. It is not intended to present novel research findings, but rather to showcase my proficiency with data handling, differential expression analysis, visualization, and interpretation within a real biological context.
