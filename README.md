@@ -17,7 +17,8 @@ Psoriasis is a debilitating autoimmune disease characterized by inflammation and
 - VennDiagram()
 - stringr()
 
-<img width="715" height="606" alt="Screen Shot 2025-12-07 at 1 56 36 PM" src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" />
+<img width="515" height="406" alt="Screen Shot 2025-12-07 at 1 56 36 PM" src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" /><img width="520" height="517" alt="Screen Shot 2025-12-07 at 2 00 20 PM" src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" />
+
 
 
 
