@@ -4,6 +4,8 @@
 This project was developed as a skills demonstration to highlight my ability to use R for bulk RNA-seq analysis, apply common bioinformatics workflows, and think critically about biological results. It is not intended to present novel research findings, but rather to showcase my proficiency with data handling, differential expression analysis, visualization, and interpretation within a real biological context.
 ### Biological context and project goals
 Psoriasis is a debilitating autoimmune disease characterized by inflammation and hyperproliferation of skin cells. Many psoriasis patients also experience several comorbidities. These would include illnesses such as cardiovascular disease, psoriatic arthritis, inflammatory bowel disease, and many more. While much progress has been made when it comes to diagnosing and treating the skin disease, mechanisms connecting psoriasis to these comorbidities are incompletely understood, and some such as psoriatic arthritis contain no diagnostic test. The goal of this project is to identify gene expression patterns that best characterize psoriasis and serve as predictors for development of future comorbidities.
+### Data
+Both the raw counts and metadata were downloaded from the EMBL-EBI Gene expression Atlas (https://www.ebi.ac.uk/gxa/experiments/E-GEOD-54456/Downloads). The data can also be found on the Gene Expression Omnibus (GEO) under the identification GSE54456.
 
 <p>
   <img src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" width="32%" />
