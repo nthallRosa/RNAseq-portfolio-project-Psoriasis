@@ -1,4 +1,12 @@
-<h1 align="center">RNAseq portfolio project: Psoriasis and associated comorbidities</h1>
+<div id="toc">
+  <ul style="list-style: none">
+    <summary>
+      <h1 align="center"> RNAseq portfolio project: Psoriasis and associated comorbidities </h1>
+    </summary>
+  </ul>
+</div>
+
+
 <h2 align="center">Bulk RNA-seq re-analysis of lesional psoriasis skin reveals shared molecular links with psoriatic arthritis and cardiovascular comorbidities<h2>
 
 ### Project overview
