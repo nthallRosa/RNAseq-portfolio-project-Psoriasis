@@ -1,0 +1,490 @@
+---
+title: "Bulk RNAseq analysis of Psoriasis and associated comorbidities"
+author: "Nia Hall"
+date: "2025-12-03"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+Psoriasis is a debilitating autoimmune disease characterized by inflammation and hyperproliferation of skin cells. This leads to the formation of itchy, scaly patches on the surface of the skin, and like most autoimmune diseases, its causes and triggers are multifactorial (genetics, environment, lifestyle, etc.). Many psoriasis patients also experience several comorbidities. These would include illnesses such as cardiovascular disease, psoriatic arthritis, inflammatory bowel disease, and many more. While much progress has been made when it comes to diagnosing and treating the skin disease, mechanisms connecting psoriasis to these comorbidities are incompletely understood, and some such as psoriatic arthritis contain no diagnostic test. The goal of this project is to identify gene expression patterns that best characterize psoriasis and serve as predictors for development of future comorbidities. Both the raw counts and metadata were downloaded from the EMBL-EBI Gene expression Atlas (https://www.ebi.ac.uk/gxa/experiments/E-GEOD-54456/Downloads). The data can also be found on the Gene Expression Omnibus (GEO) under the identification GSE54456.
+
+```{r Packages used in analysis, echo=F, include=F}
+if (require("DESeq2")) {
+  message("DESeq2 is already installed.")
+} else {
+  message("DESeq2 needs to be installed. Installing now...")
+  BiocManager::install("DESeq2")
+}
+
+if (require("EnhancedVolcano")) {
+  message("EnhancedVolcano is already installed.")
+} else {
+  message("EnhancedVolcano needs to be installed. Installing now...")
+  BiocManager::install("EnhancedVolcano")
+}
+
+if (require("dplyr")) {
+  message("dplyr is already installed.")
+} else {
+  message("dplyr needs to be installed. Installing now...")
+  install.packages("dplyr")
+}
+
+if (require("clusterProfiler")) {
+  message("clusterProfiler is already installed.")
+} else {
+  message("clusterProfiler needs to be installed. Installing now...")
+  BiocManager::install("clusterProfiler")
+}
+
+if (require("org.Hs.eg.db")) {
+  message("org.Hs.eg.db is already installed.")
+} else {
+  message("org.Hs.eg.db needs to be installed. Installing now...")
+  BiocManager::install("org.Hs.eg.db")
+}
+
+if (require("enrichplot")) {
+  message("enrichplot is already installed.")
+} else {
+  message("enrichplot needs to be installed. Installing now...")
+  BiocManager::install("enrichplot")
+}
+
+if (require("pathview")) {
+  message("pathview is already installed.")
+} else {
+  message("pathview needs to be installed. Installing now...")
+  BiocManager::install("pathview")
+}
+
+if (require("VennDiagram")) {
+  message("VennDiagram is already installed.")
+} else {
+  message("VennDiagram needs to be installed. Installing now...")
+  install.packages("VennDiagram")
+}
+
+if (require("stringr")) {
+  message("stringr is already installed.")
+} else {
+  message("stringr needs to be installed. Installing now...")
+  install.packages("stringr")
+}
+```
+
+
+
+```{r load required libraries, warning=FALSE, message=FALSE}
+library(DESeq2)
+library(EnhancedVolcano)
+library(dplyr)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+library(pathview)
+library(VennDiagram)
+library(stringr)
+```
+
+
+## Read in raw counts and metadata
+```{r load in count data and metadata}
+# Read in raw counts and metadata
+url.counts <- paste0(
+  "https://www.ebi.ac.uk/gxa/experiments-content/E-GEOD-54456/",
+  "resources/DifferentialSecondaryDataFiles.RnaSeq/raw-counts"
+)
+url.sample.info <-paste0("https://www.ebi.ac.uk/gxa/experiments-content/E-GEOD-54456/",
+                    "resources/ExperimentDesignFile.RnaSeq/experiment-design"
+)
+raw.counts <- read.table(url.counts, sep = "\t", header = TRUE)
+sample.info <- read.table(url.sample.info, sep = "\t", header = TRUE)
+```
+
+
+## Wrangle data
+Before DESeq2 can be used, the data must be altered so that the gene IDs are the row names in the counts data (ENSG), while the sample IDs (SRR) are the rownames for the metadata (sample.info). Factor levels will also be created for the Disease_state column. DESeq2 will automatically choose the reference/control group based on alphabetical order of the levels. To avoid this, factor levels will be explicitly set (though mine are already in alphabetical order, explicitly stating the reference level is good practice). The relevel function can also be used to specify the reference. Lastly, the ordering of the rows in sample.info and columns of the counts data will be altered so that they match. This alignment is necessary for the DESeqDataSetFromMatrix function to create a deseq object that can be used for differential expression analysis. 
+```{r data wrangling}
+# DESeq2 expects the counts data to have the gene IDs as the rownames. So numbers 
+# will be replaced with IDs and gene ID info and gene name will be stored for later use.
+rownames(raw.counts) <- raw.counts$Gene.ID
+
+genes <- raw.counts[, c("Gene.ID", "Gene.Name")]
+
+# remove unused columns (gene ID and gene name)
+raw.counts <- raw.counts[, -c(1, 2)]
+
+# DESeq2 wants the metadata to have sample IDs in the rownames
+rownames(sample.info) <- sample.info$Run
+
+# keep only columns of interest
+sample.info <- sample.info[, "Sample.Characteristic.disease.", drop = FALSE]
+
+# change column name to a simpler title
+colnames(sample.info) <- "Disease_state"
+
+# Turn Infection.state into a factor
+sample.info$Disease_state<- factor(sample.info$Disease_state, 
+                                      levels = c("normal", "psoriasis"))
+
+# Check to see if the order of sample.info and raw.counts match
+all(rownames(sample.info) == colnames(raw.counts))
+# re-order the rownames of sample.info so that they match that of raw.counts
+new.labels<- match(colnames(raw.counts), rownames(sample.info))
+sample.info.r <- sample.info[new.labels, ,drop=FALSE]
+# check to make sure re-ordered data frame aligns with 
+all(rownames(sample.info.r) == colnames(raw.counts))
+```
+
+
+##  Run DESeq2
+```{r run deseq2, message=FALSE}
+dds <- DESeqDataSetFromMatrix(countData = raw.counts, colData = sample.info.r, 
+                              design = ~Disease_state)
+
+# remove genes with low counts
+dds <- dds[rowSums(counts(dds)) > 10, ]
+
+# Run DESeq2
+dds <- DESeq(dds)
+
+# Compare expression 
+res <- results(dds, contrast = c("Disease_state", "psoriasis", "normal"),
+               alpha = 1e-5)
+
+# Merge gene name into data frame so can compare to GXA UI using gene names
+res_df <- as.data.frame(res)
+res_df <- merge(res_df, genes, by = "row.names")
+```
+
+## PCA
+Before examining the results, it is important to run principal component analysis to ensure there aren't any batch effects. Ideally, the normal and psoriasis samples should form two distinct clusters.
+```{r PCA plot, fig.align='center', message=FALSE}
+vsd <- vst(dds, blind=FALSE)
+
+plotPCA(vsd, intgroup=c("Disease_state"))
+```
+Figure 1. Principal component analysis plot examining the groupings of samples by disease state.
+
+## MA plot
+In examining the MA plot, one can see that there are roughly just as many genes significantly up-regulated as there are down-regulated; the bulk of which falling within the -1/+1 range.
+```{r MA plot, fig.align='center'}
+plotMA(dds)
+abline(h=c(-2,2), col="orange", lty=2, lwd = 2)
+```
+Figure 2. MA plot examining the mean average of log-transformed normalized gene counts. Log-fold change thresholds are set to -2 and 2. 
+
+
+## Differential expression analysis results
+Differential expression analysis reveal that the top 10 genes with the greatest log-fold increase are involved in inflammation, microbial defense, and skin cell proliferation (IL36A, DEFB4B, SPRR2C, and CXCL8)$^{1,2,3,4}$. Those with the greatest logfold decrease are involved in a variety of functions, including protein folding in ciliated epithelial cells (AGR3)$^5$ and metabolism of cholesterol, steroids, vitamins, and drugs (CYP1A2)$^6$.The connection between these two genes to psoriasis is tenuous, with mixed reports regarding CYP1A2 expression and disease progression. While some some find no significant shifts in expression$^{7,8}$, others find that expression levels drop significantly upon high levels of TNF-alpha expression$^9$. Similar trends can be found in the differential expression analysis results, with TNF-alpha having a log-fold increase of `r res_df[24052, 3]` (p value `r format(res_df[24052, 7], scientific = TRUE) `). Even less data has been generated for AGR3. While the gene does appear in gene expression listings of psoriasis studies$^{10}$, no mechanisms have been proposed as to how this gene directly or indirectly effects the disease. 
+
+These genes, along with their logfold changes are similar to results recorded on EMBL-EBI (https://www.ebi.ac.uk/gxa/experiments/E-GEOD-54456/Results) and a 2023 study conducted by Johnsson et al. When comparing psoriasis and healthy skin samples, AGR3 was one of the top 10 down-regulated genes, and IL36A, DEFB4B, and CXCL8 being amongst their top 10 upregulated$^{11}$. Besides those genes, there are also significant increases in a suite of cytokines known to be associated with psoriasis. These include IL17A, IL12B, IL17F, IL-23A, and IL-22$^{12}$.
+
+### Volcano plot
+```{r volcano plot, message=FALSE, warning=FALSE, fig.height=6, fig.width=6, fig.align='center'}
+EnhancedVolcano(res_df, lab=res_df$Gene.Name, x='log2FoldChange', y='pvalue', 
+                                  title = "normal vs psoriasis")
+```
+Figure 3. Volcano plot displaying the top over expressed and suppressed genes in Psoriasis patients compared to normal patients. Log-fold change thresholds of -1 and 1 were used with an adjusted p value of 0.05.
+
+
+### Top 10 upregulaged
+```{r top 10 upregulated genes}
+head(res_df[order(res_df$log2FoldChange, decreasing = T),c(8,3,7,9)], n = 10)
+```
+Table 1. Log-fold change, adjusted p value, and gene name for the top 10 up-regulated genes.
+
+### Top 10 downregulated
+```{r top 10 downregulated genes}
+head(res_df[order(res_df$log2FoldChange, decreasing = F),c(8,3,7,9)], n = 10)
+```
+Table 2. Log-fold change, adjusted p value, and gene name for the top 10 down-regulated genes.
+
+## GO enrichment analysis
+Performing GO enrichment analysis uncovers 110 biological processes with a p.adjust value less that 0.001. The top up-regulated pathways are involved in antibacterial responses, keratinization, cytokine signaling pathways, humoral immune responses, response to lipopolysaccharides, neutrophil chemotaxis, etc. These align with findings from previous studies that have identified keratinocytes as the major initiators and executors of psoriasis $^{13,14,15}$, and microbial infection being one of the most common environmental factors believed to trigger psoriasis, particularly streptococcal infection$^{16}$. 
+```{r top 20 enriched biological processes, message=FALSE,warning=FALSE,fig.height=12, fig.width=9}
+# extract significant genes from dataframe
+significant_genes <- res_df %>%
+        filter(padj <=0.01, abs(log2FoldChange) >= 2) %>% 
+        pull(Gene.Name)
+
+# convert gene symbol to Entrez ID for 
+
+significant_genes_map <- clusterProfiler::bitr(geneID = significant_genes,
+                                              fromType="SYMBOL", toType="ENTREZID",
+                                              OrgDb="org.Hs.eg.db")
+
+## background genes are genes that are detected in the RNAseq experiment 
+background_genes<- res_df %>% 
+        filter(baseMean != 0) %>%
+        tibble::rownames_to_column(var = "gene") %>%
+        pull(Gene.Name)
+
+res_new<- res %>% 
+        as.data.frame() %>% 
+        filter(baseMean != 0) %>%
+        tibble::rownames_to_column(var = "gene")
+
+background_genes_map<- bitr(geneID = background_genes, 
+                            fromType="SYMBOL", 
+                            toType="ENTREZID",
+                            OrgDb="org.Hs.eg.db")
+
+## GO Enrichment analysis
+ego <- enrichGO(gene          = significant_genes_map$ENTREZID,
+                universe      = background_genes_map$ENTREZID,
+                OrgDb         = org.Hs.eg.db,
+                ont           = "BP",
+                pAdjustMethod = "BH",
+                pvalueCutoff  = 0.01,
+                qvalueCutoff  = 0.05,
+                readable      = TRUE)
+barplot(ego, showCategory=20, las = 2, cex.names = 0.5)
+```
+Figure 4. Bar plot displaying the top 20 biological processes enriched in psoriasis patients vs normal patients. Count refers to the number of genes that contribute to each process. 
+
+## KEGG Pathway analysis
+The following pathways are related to psoriasis as well as a range of other diseases. Among the upregulated pathways, the most enriched are those involved in inflammation, antibacterial/viral responses, arthritis, and replication (hsa04657-IL-17 signaling pathway, hsa04061-Viral protein interaction with cytokine and cytokine receptor, hsa04620- Toll-like receptor signaling pathway, hsa03030-DNA replication, hsa05323-Rheumatoid arthritis, hsa04060-Cytokine-cytokine receptor interaction, and hsa04064-NF-kappa B signaling pathway). The top underrepresented pathways are involved in fatty acid metabolism and various cardiac functions (hsa00061-Fatty acid biosynthesis, hsa04923-Regulation of lipolysis in adipocytes, hsa01040-Biosynthesis of unsaturated fatty acids, hsa05414-Dilated cardiomyopathy, hsa04260-Cardiac muscle contraction, hsa05410-Hypertrophic cardiomyopathy). 
+
+Though known for the skin damage it causes, 30% of individuals with psoriasis also have psoriatic arthritis. Other co-morbidities include cardiovascular disease, metabolic syndrome and psychiatric conditions, though mechanisms as to how these diseases are linked remain incompletely understood$^{16}$. As is shown in the enrichment dot plot, calcium signaling pathways are among several that are significantly suppressed. Several studies have shown that dysfunctions in calcium regulation could lead to hyper-proliferation of keratinocytes via the down-regulation of genes such as CaSR, STIM1, and ORAI$^{17,18}$. Neither STIM1 or ORAI were detected in this dataset, and while CasSR was present, it's log-fold change was non-significant. However, with calcium playing a critical role in heart contraction and muscle function, it is worth exploring their potential role in the initiation and or progression of cardiovascular disease in psoriasis patients.
+```{r kegg gene list, message=FALSE, warning=FALSE}
+# Map to Entrez IDs
+ids <- bitr(res_df$Gene.ID,
+                     fromType = "ENSEMBL",
+                     toType = "ENTREZID",
+                     OrgDb = org.Hs.eg.db)
+
+# remove duplicate IDS (here I use "ENSEMBL", 
+# but it should be whatever was selected as keyType)
+dedup_ids = ids[!duplicated(ids[c("ENSEMBL")]),]
+
+# Create a new dataframe df2 which has only the genes which were successfully mapped 
+# using the bitr function above
+df2 = res_df[res_df$Gene.ID %in% dedup_ids$ENSEMBL,]
+
+# Create a new column in df2 with the corresponding ENTREZ IDs
+df2$Y = dedup_ids$ENTREZID
+
+# Create a vector of the gene unuiverse
+kegg_gene_list <- df2$log2FoldChange
+
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$Y
+
+# omit any NA values 
+kegg_gene_list<-na.omit(kegg_gene_list)
+kegg_gene_list <- kegg_gene_list[!duplicated(names(kegg_gene_list))]
+# sort the list in decreasing order (required for clusterProfiler)
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+```
+
+
+```{r creation of kegg object, message=FALSE, warning=FALSE}
+# create gseKEGG object
+kegg_organism = "hsa"
+kk2 <- gseKEGG(geneList     = kegg_gene_list,
+               organism     = kegg_organism,
+               nPerm        = 10000,
+               minGSSize    = 3,
+               maxGSSize    = 800,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "none",
+               keyType       = "ncbi-geneid")
+```
+
+
+```{r dotplot of top 18 activated pathways, fig.height=6, fig.width=6}
+# Top upregulated pathways 
+dotplot(
+  kk2 %>% filter(p.adjust < 0.001, enrichmentScore > 0.4),
+  showCategory = 18,
+  title = "Activated Pathways",
+  font.size = 9
+)
+```
+
+Figure 5. Dot plot displaying the top 18 activated pathways in psoriasis patients vs normal patients. Size of the dots refer to number of genes associated with each pathway, while the GeneRatio refers the proportion of genes in the pathway compared to the total number of genes analyzed.
+
+
+```{r dotplot of top 18 suppressed pathways, fig.height=6, fig.width=6}
+# Top suppressed pathways
+dotplot(
+  kk2 %>% filter(p.adjust < 0.001, enrichmentScore < -0.4),
+  showCategory = 18,
+  title = "Suppressed Pathways",
+  font.size = 8
+)
+```
+
+Figure 6. Dot plot displaying the top 18 suppressed pathways in psoriasis patients vs normal 
+patients. Size of the dots refer to number of genes associated with each pathway, while the 
+GeneRatio refers the proportion of genes in the pathway compared to the total number of genes 
+analyzed.
+
+One of the most important pathways in psoriasis is the IL-17 pathway. T cytotoxic and T helper 17 cells are activated by IL-23 (another important cytokine in psoriasis), and they in turn secret IL-17A, IL-17F, and IL-22. While IL-17 goes on to activate fibroblasts (which play a major role in psoratic arthritis), macrophages and endothelial cells (could contribute to the development of cardiovascular disease), work with IL-22 to activate keratinocytes. This creates a feed-forward loop in which keratinocytes continue to proliferate, secreting more cytokines that in turn activate more Th17 cells $^{16}$. 
+```{r kegg plot for Th17 differentiation, message=FALSE, fig.align='center',dpi = 100,out.width="80%", out.height="60%"}
+# Produce the native KEGG plot (PNG)
+Th17 <- pathview(gene.data=kegg_gene_list, pathway.id="hsa04659", species = kegg_organism)
+knitr::include_graphics("hsa04659.pathview.png")
+```
+Figure 7. KEGG pathway for Th17 cell differentiation.
+
+The same cytokines that are important in skin inflammation (IL-17 and IL-23) also show up in illnesses that accompany psoriasis, particularly psoriatic arthritis $^{19}$. In the kegg analysis, the rheumatoid arthritis pathway obtained an enrichment score of `r round(kk2@result["hsa05323", "enrichmentScore"],2)`. Though different in terms of etiology and impact throughout the body, both rheumatoid and psoriatic arthritis affect the musculoskeletal system. According to the KEGG pathway map for rheumatoid shown below, IL-17 acts on synovial fibroblasts initiating their hyper-proliferation (along with several other cytokines) and invasion of nearby cartilage.
+```{r kegg plot for rheumatoid arthritis, message=FALSE, fig.align='center', dpi = 100,out.width="80%", out.height="60%"}
+rheumatoid <- pathview(gene.data=kegg_gene_list, pathway.id="hsa05323", species = kegg_organism)
+knitr::include_graphics("hsa05323.pathview.png")
+```
+Figure 8. KEGG pathway for Rheumatoid arthritis.
+
+
+With the rheumatoid pathway being so prominent, the next phase would be to identify genes that 
+are unique to it and those that overlap with the Th17 pathway.
+```{r venn diagram, fig.align='center',fig.height=4, fig.width=4}
+rheumatoid.kegg <- kk2@result["hsa05323", "core_enrichment"]
+Th17.kegg <- kk2@result["hsa04659", "core_enrichment"]
+
+# replace slashes with commas
+rheumatoid.kegg <- str_replace_all(rheumatoid.kegg, "/", ",")
+Th17.kegg <- str_replace_all(Th17.kegg, "/", ", ")
+
+# transform characters into numbers
+rheumatoid.kegg <- as.integer(unlist(strsplit(rheumatoid.kegg, ",")))
+Th17.kegg <- as.integer(unlist(strsplit(Th17.kegg, ",")))
+
+# extract genes from each pathway (rheumatoid and Th17) that were found in the kegg dataset
+symbols.r <- rheumatoid$plot.data.gene$labels[rheumatoid$plot.data.gene$kegg.names 
+                                              %in% rheumatoid.kegg]
+symbols.th17 <- Th17$plot.data.gene$labels[Th17$plot.data.gene$kegg.names %in% Th17.kegg]
+
+# remove duplicate genes
+symbols.r <- symbols.r[!duplicated(symbols.r)]
+symbols.th17 <- symbols.th17[!duplicated(symbols.th17)]
+
+# create pairwise Venn diagram
+grid.newpage()
+draw.pairwise.venn(area1=24, area2=23,cross.area=5, cat.pos = c(0, 0),
+                   cat.dist = c(0.05, 0.05), category=c("Th17","Rheumatoid"),
+                   fill=c("Yellow","Red"), cat.cex = 1.2, cat.fontface = "bold",
+                   cex = 2)
+
+# genes present in rheumatoid pathways that are not present in IL17
+setdiff(symbols.r, symbols.th17)
+```
+Figure 9. Venn Diagram displaying the number of genes shared and unique to the Th17 pathway and
+the rheumatoid pathway.
+
+After identifying genes that are unique to and present in both pathways, we find that 5 genes present in the Th17 pathway overlap with the rheumatoid one and include cytokines such as `r intersect(symbols.r, symbols.th17)`. These same genes have been identified in other studies examining the linkage between skin inflammation and psoriatic arthritis$^{20,21,22}$. Additional genes identified in patients diagnosed with psoriatic arthritis (but absent in the rheumatoid pathway) were also found to be elevated in this dataset. They include: CXCL9, CXCL10, DCST2 and CSF1$^{19,23}$. None of the psoriasis patients in this study have been documented as having psoriatic arthritis, but the very presence of these genesets and pathways in those with mid to advanced psoriatic arthritis points towards the possibility that these genes could be used as a panel to screen and monitor those who have already been diagnosed with psoriasis.
+
+
+## Summary
+Differential gene expression and GO analysis uncovered elevations in genes and biological processes one would expect to find in psoriasis such as cytokines IL36A and CXCL8, and antimicrobial peptides DEFB4B, SPRR2C. Such genes are involved in the proliferation of keratinocytes, cytokine signaling pathways, defense from pathogens, and recruitment of immune cells. However, when performing KEGG analysis there were a number of pathways non-specific to psoriasis with significantly low or high enrichment scores. Pathways indicative of psoriatic arthritis (Rheumatoid arthritis) had an enrichment score of `r round(kk2@result["hsa05323", "enrichmentScore"],2)`, while those indicative of cardiovascular disease (calcium signaling pathway and cardiac muscle contraction) contained scores of `r round(kk2@result["hsa04020", "enrichmentScore"],2)` and `r round(kk2@result["hsa04260", "enrichmentScore"],2)` respectively. For the rheumatoid pathway in particular, 5 of its characteristic genes integrated with the T17 pathway, a pathway that is critical to the initiation and progression of psoriasis. Additional genes characteristic of psoriatic arthritis (CXCL9, CXCL10, DCST2 and CSF1) were also elevated in psoriasis patients. These results point towards the possibility of using such genes as a panel to screen for potential development of psoriatic arthritis in psoriasis patients. It is important to note that some of the above genes are also present in skin inflammation, and the patients used in this study were not officially diagnosed with psoriatic arthritis. Future experiments such as longitudinal studies characterizing the progression from psoriasis to psoriatic arthritis will provide a more complete understanding of what genes (and their concentrations levels) distinguish arthritis from the skin inflammation. 
+
+
+## References
+
+1. Keermann, M., Kõks, S., Reimann, E., Prans, E., Abram, K., & Kingo, K. 
+   (2015).Transcriptional landscape of psoriasis identifies the involvement 
+   of IL36 and IL36RN. BMC
+   Genomics, 16(1). https://doi.org/10.1186/s12864-015-1508-2.
+2. Borchers, N. S., Elisangela Santos-Valente, Toncheva, A. A., Wehkamp, J., 
+   Franke, A.,Gaertner, V. D., Nordkild, P., Genuneit, J., Benjamin, & 
+   Kabesch, M. (2021). Human β-Defensin 2 Mutations Are Associated With 
+   Asthma and Atopy in Children and Its Application Prevents Atopic Asthma in
+   a Mouse Model. Frontiers in Immunology, 12. 
+   https://doi.org/10.3389/fimmu.2021.636061.
+3. Yin, X., Yang, Z., Zhu, M., Chen, C., & Sun, Q. (2022). Role of the long 
+   non-coding RNA, SPRR2C, based on an. European Journal of Dermatology, 
+   32(2), 171–180.https://doi.org/10.1684/ejd.2022.4247.
+4. Zdanowska N, Kasprowicz-Furmańczyk M, Placek W, Owczarczyk-Saczonek A. The
+   Role of Chemokines in Psoriasis-An Overview. Medicina (Kaunas). 2021 Jul 
+   26;57(8):754. doi:10.3390/medicina57080754. PMID: 34440960; PMCID: 
+   PMC8400543.
+5. Bonser, L. R., Schroeder, B. W., Ostrin, L. A., Baumlin, N., Olson, J. L.,
+   Salathe,M., & Erle, D. J. (2015). The Endoplasmic Reticulum Resident 
+   Protein AGR3. Required for Regulation of Ciliary Beat Frequency in the 
+   Airway. American Journal of Respiratory Cell and Molecular Biology, 53(4),
+   536–543.https://doi.org/10.1165/rcmb.2014-0318oc.
+6. Thorn CF, Aklillu E, Klein TE, Altman RB. PharmGKB summary: very important
+   pharmacogene information for CYP1A2. Pharmacogenet Genomics. 2012 
+   Jan;22(1):73-7. doi: 10.1097/FPC.0b013e32834c6efd. Erratum in: 
+   Pharmacogenet Genomics. 2019 Nov;29(9):224. doi:
+   10.1097/FPC.0000000000000387. PMID: 21989077; PMCID: PMC3346273.
+7. Sathe, Abhishek G, et al. “Therapeutic Protein Drug Interaction Potential 
+   in Subjects with Psoriasis: An Assessment Based on Population 
+   Pharmacokinetic Analyses of Sensitive Cytochrome P450 Probe Substrates.” 
+   Journal of Clinical Pharmacology, vol. 61, no. 3, 22 Sept. 2020, pp. 
+   307–318, https://doi.org/10.1002/jcph.1744. Accessed 29 July 2024.
+8. Khatri, Amit, et al. “Lack of Effect of 12-Week Treatment with 
+   Risankizumab on the Pharmacokinetics of Cytochrome P450 Probe Substrates 
+   in Patients with Moderate to Severe Chronic Plaque Psoriasis.” Clinical 
+   Pharmacokinetics, vol. 58, no. 6, 21 Dec.2018, pp. 805–814,
+   d-nb.info/1177003449/34,https://doi.org/10.1007/s40262-018-0730-x. 
+   Accessed 13 Sept. 2021.
+9. Frye RF, Schneider VM, Frye CS, Feldman AM. Plasma levels of TNF-alpha and
+   IL-6 areinversely related to cytochrome P450-dependent drug metabolism in 
+   patients with congestive heart failure. J Cardiac Failure. 
+   2002;8(5):315-319.
+10. Johnsson, Hanna, et al. “Cutaneous Lesions in Psoriatic Arthritis Are 
+    Enriched in Chemokine Transcriptomic Pathways.” Arthritis Research & 
+    Therapy, vol. 25, no. 1, 2 May 2023,
+    https://doi.org/10.1186/s13075-023-03034-6.
+11. Johnsson, H., Cole, J., Siebert, S., McInnes, I. B., & Graham, G. (2023).
+    Cutaneous lesions in psoriatic arthritis are enriched in chemokine 
+    transcriptomic pathways. Arthritis Research & Therapy, 25(1). 
+    https://doi.org/10.1186/s13075-023-03034-6.
+12. Li, B., Tsoi, L. C., Swindell, W. R., Gudjonsson, J. E., Tejasvi, T., 
+    Johnston, A., Ding, J.,Stuart, P. E., Xing, X., Kochkodan, J. J.,
+    Voorhees, J. J., Kang, H. M.,Nair, R. P.,Abecasis,G. R., & Elder, J. T. 
+    (2014). Transcriptome Analysis of Psoriasis in a Large Case–Control 
+    Sample: RNA-Seq Provides Insights into Disease Mechanisms. Journal of 
+    Investigative Dermatology, 134(7),
+    1828–1838.https://doi.org/10.1038/jid.2014.28.
+13. Lande, R., Gregorio, J., Facchinetti, V. et al. Plasmacytoid dendritic 
+    cells sense self-DNA coupled with antimicrobial peptide. Nature 449, 
+    564–569 (2007).https://doi.org/10.1038/nature06116.
+14. Judilyn Fuentes‐Duculan, Bonifacio, K. M., Hawkes, J. E., Kunjravia, N., 
+    Cueto, I., Li, X., Gonzalez, J., Garcet, S., & Krueger, J. G. (2017). 
+    Autoantigens ADAMTSL5 and LL37 are significantly upregulated in active 
+    Psoriasis and localized with keratinocytes, dendritic cells and other 
+    leukocytes. Experimental Dermatology, 26(11), 1075–1082. 
+    https://doi.org/10.1111/exd.13378.
+15. Moos, S., Mohebiany, A. N., Waisman, A., & Kurschus, F. C. (2019). 
+    Imiquimod-Induced Psoriasis in Mice Depends on the IL-17 Signaling of 
+    Keratinocytes. Journal of Investigative Dermatology, 139(5), 
+    1110–1117.https://doi.org/10.1016/j.jid.2019.01.006.
+16. Armstrong, A.W., Blauvelt, A., Callis Duffin, K. et al. Psoriasis. Nat 
+    Rev Dis Primers 11, 45(2025). https://doi.org/10.1038/s41572-025-00630-5.
+17. Kim H, Choi MR, Jeon SH, Jang Y, Yang YD. Pathophysiological Roles of Ion
+    Channels in Epidermal Cells, Immune Cells, and Sensory Neurons in 
+    Psoriasis. Int J Mol Sci. 2024 Feb 27;25(5):2756.doi: 
+    10.3390/ijms25052756. PMID: 38474002; PMCID: PMC10932231.
+18. Cubillos, S., & Norgauer, J. (2016). Low vitamin D-modulated 
+    calcium-regulating proteins in psoriasis vulgaris plaques: S100A7 
+    overexpression depends on joint involvement. International Journal of 
+    Molecular Medicine, 38(4), 1083–1092. 
+    https://doi.org/10.3892/ijmm.2016.2718.
+19. Schett, G., Rahman, P., Ritchlin, C., McInnes, I. B., Elewaut, D., & 
+    Scher, J. U. (2022).Psoriatic arthritis from a mechanistic perspective. 
+    Nature Reviews Rheumatology.https://doi.org/10.1038/s41584-022-00776-6. 
+20. Leijten, E. F. A., van Kempen, T. S., Boes, M., Michels-van Amelsfort, J.
+    M. R., Hijnen,D.,Hartgring, S. A. Y., van Roon, J. A. G., Wenink, M. H., 
+    & Radstake, T. R. D. J. (2015).Brief Report: Enrichment of Activated 
+    Group 3 Innate Lymphoid Cells in Psoriatic Arthritis 
+    Synovial Fluid. Arthritis & Rheumatology, 67(10), 2673–2678.
+    https://doi.org/10.1002/art.39261.
+21. Menon, B., Gullick, N. J., Walter, G. J., Rajasekhar, M., Garrood, T., 
+    Evans, H. G., Taams,L. S., & Kirkham, B. W. (2014). Interleukin-17+CD8+ T
+    Cells Are Enriched in the Joints of Patients With Psoriatic Arthritis and
+    Correlate With Disease Activity and Joint Damage Progression. Arthritis &
+    Rheumatology, 66(5), 1272–1281.https://doi.org/10.1002/art.38376.
+22. Yeremenko, N., Paramarta, J. E., & Baeten, D. (2014). The 
+    interleukin-23/interleukin-17 immune axis as a promising new target in 
+    the treatment of spondyloarthritis. Current Opinion in Rheumatology, 
+    26(4), 361–370. https://doi.org/10.1097/bor.0000000000000069. 
+23. Abji, F., Pollock, R. A., Liang, K., Chandran, V., & Gladman, D. D. 
+    (2016). Brief Report: CXCL10 Is a Possible Biomarker for the Development 
+    of Psoriatic Arthritis Among Patients With Psoriasis. Arthritis & 
+    Rheumatology, 68(12), 2911–2916.https://doi.org/10.1002/art.39800.
+
+
