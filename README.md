@@ -6,9 +6,9 @@ This project was developed as a skills demonstration to highlight my ability to 
 Psoriasis is a debilitating autoimmune disease characterized by inflammation and hyperproliferation of skin cells. Many psoriasis patients also experience several comorbidities. These would include illnesses such as cardiovascular disease, psoriatic arthritis, inflammatory bowel disease, and many more. While much progress has been made when it comes to diagnosing and treating the skin disease, mechanisms connecting psoriasis to these comorbidities are incompletely understood, and some such as psoriatic arthritis contain no diagnostic test. The goal of this project is to identify gene expression patterns that best characterize psoriasis and serve as predictors for development of future comorbidities.
 
 <p>
-  <img align="left" src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" width="32%" />
-  <img align="right" src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" width="32%" />
-  <img align="center" src="https://github.com/user-attachments/assets/db994541-1645-409c-aaf7-78496c066c19" width="32%"/>
+  <img src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" width="32%" />
+  <img src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" width="32%" />
+  <img src="https://github.com/user-attachments/assets/db994541-1645-409c-aaf7-78496c066c19" width="32%"/>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8f830f71-0298-4dcc-8121-0e6cff1e19a1" width="32%"/>
