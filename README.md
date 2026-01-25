@@ -10,8 +10,7 @@ Both the raw counts and metadata were downloaded from the EMBL-EBI Gene expressi
 <p>
   <img src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" width="32%" />
   <img src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" width="32%" />
-  <img src="https://github.com/user-attachments/assets/db994541-1645-409c-aaf7-78496c066c19" width="32%"/>
-
+  <img src="https://github.com/user-attachments/assets/40204b7e-3c29-4985-a9ba-84f41d53a9b7" width="32%"/>
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8f830f71-0298-4dcc-8121-0e6cff1e19a1" width="32%"/>
 </p>
