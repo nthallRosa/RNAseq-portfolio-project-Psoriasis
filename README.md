@@ -10,7 +10,7 @@ Both the raw counts and metadata were downloaded from the EMBL-EBI Gene expressi
 <p>
   <img src="https://github.com/user-attachments/assets/9a07e678-de96-49be-98dd-d86aef3d8a2b" width="32%" />
   <img src="https://github.com/user-attachments/assets/2e5adfd5-a7dc-4fd5-a318-dc35691617b6" width="32%" />
-  <img src="https://github.com/user-attachments/assets/40204b7e-3c29-4985-a9ba-84f41d53a9b7" width="32%"/>
+  <img src="https://github.com/user-attachments/assets/d8584e5b-9290-44fe-86d8-b917cabc4fff" width="32%"/>
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8f830f71-0298-4dcc-8121-0e6cff1e19a1" width="32%"/>
 </p>
@@ -21,17 +21,15 @@ Both the raw counts and metadata were downloaded from the EMBL-EBI Gene expressi
 - Multiple psoriatic arthritis-associated genes (CXCL9, CXCL10, CSF1, DCST2) significantly elevated, suggesting potential as an early screening panel for PsA development in psoriasis patients.
 - Cardiovascular-related pathways (calcium signaling hsa04020, ES = -0.41; cardiac muscle contraction hsa04260, ES = -0.55) also enriched, hinting at shared transcriptional mechanisms with cardiometabolic comorbidities.
 
-*** Important to note that version of tools such as org.Hs.eg.db could lead to slightly different results ***
-
 ### Tools
-- Rstudio (2025.5.1.513.3)
-- R(4.5.2)
-- DESeq2(1.50.2)
-- EnhancedVolcano(1.29.1)
+- Rstudio (2023.12.1+402)
+- R(4.3.1)
+- DESeq2(1.42.1)
+- EnhancedVolcano(1.20.0)
 - dplyr(1.1.4)
-- clusterProfiler(4.18.2)
-- org.Hs.eg.db(3.22.0)
-- enrichplot(1.30.3)
-- pathview(1.50.0)
+- clusterProfiler(4.10.1 )
+- org.Hs.eg.db(3.18.0)
+- enrichplot(1.22.0)
+- pathview(1.42.0)
 - VennDiagram(1.7.3)
-- stringr(1.6.0)
+- stringr(1.5.1)
